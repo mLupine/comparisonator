@@ -1,0 +1,31 @@
+[tool.poetry]
+name = "Comparisonator"
+version = "0.1.0"
+description = "A handy tool for making rankings out of a list of items"
+authors = ["Maciej Wilczyński <maciej@lupine.software>"]
+packages = [
+    { include="src", from="." },
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+click = "^8.0.1"
+appdirs = "^1.4.4"
+dacite = "^1.6.0"
+python-slugify = "^5.0.2"
+slugify = "^0.0.1"
+
+[tool.poetry.dev-dependencies]
+black = "^21.9b0"
+isort = "^5.9.3"
+autoflake = "^1.4"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 80
+
+[tool.poetry.scripts]
+comparisonator = "src.main:main"
