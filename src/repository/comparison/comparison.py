@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Optional
+from typing import Optional, Any
 
 from src.entity.comparison import Comparison
 from src.entity.item import Item
