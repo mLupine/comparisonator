@@ -1,3 +1,5 @@
+import math
+
 import click
 from slugify import slugify
 
@@ -46,8 +48,8 @@ def vote():
     "--type",
     "check_type",
     prompt=True,
-    help="Type of comparison. Use 'full' to compare each item with every other, or 'quick' to assume some comparisons.",
-    type=click.Choice(["full", "quick"], case_sensitive=False),
+    help="Type of comparison. Use 'full' to compare each item with every other, or 'assuming' to assume some comparisons.",
+    type=click.Choice(["full", "assuming"], case_sensitive=False),
 )
 @Utils.error_wrapped
 def create(name: str, filepath: str, check_type: str):
@@ -59,10 +61,9 @@ def create(name: str, filepath: str, check_type: str):
         if s.id == slug:
             raise AppError(f"Session {slug} already exists")
 
-    if check_type == "quick":
-        raise AppError("Quick comparison not implemented yet")
-
-    repo.save_session(Session(id=slug, name=name, comparison_type=check_type, items=items))
+    repo.save_session(
+        Session(id=slug, name=name, comparison_type=check_type, items=items)
+    )
     click.echo(f"Session {slug} created successfully!")
 
 
@@ -103,16 +104,40 @@ def interactive(session_id: str):
     if not session:
         raise AppError(f"Session {session_id} does not exist")
 
-    comparison_repo = ComparisonEngineRepository().get_comparison_repository(session)(session)
+    comparison_repo = ComparisonEngineRepository().get_comparison_repository(
+        session
+    )(session)
     while items := comparison_repo.get_next_comparison():
         comp_num = comparison_repo.get_finished_comparison_count() + 1
-        all_num = comparison_repo.get_finished_comparison_count() + comparison_repo.get_pending_comparison_count()
-        click.echo(click.style(f"Comparison {comp_num} of {all_num}:", fg="bright_white", bold=True))
+        pending_comparison_count = (
+            comparison_repo.get_pending_comparison_count()
+        )
+        if pending_comparison_count is not None:
+            all_num = (
+                comparison_repo.get_finished_comparison_count()
+                + pending_comparison_count
+            )
+            click.echo(
+                click.style(
+                    f"Comparison {comp_num} of {all_num}:",
+                    fg="bright_white",
+                    bold=True,
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"Comparison {comp_num}:", fg="bright_white", bold=True
+                )
+            )
+
         for i, item in enumerate(items):
             click.echo(f"  - {i + 1}: {item.name}")
 
         while True:
-            choice = click.prompt("Enter the number of the item you think is better", type=int)
+            choice = click.prompt(
+                "Enter the number of the item you think is better", type=int
+            )
             if choice < 1 or choice > len(items):
                 click.echo(f"Invalid choice {choice}", err=True)
                 continue
@@ -122,7 +147,9 @@ def interactive(session_id: str):
         comparison_repo.save_comparison(comparison)
     click.echo(
         click.style(
-            "All comparisons have been performed. Go ahead and check the results!", fg="bright_white", bold=True
+            "All comparisons have been performed. Go ahead and check the results!",
+            fg="bright_white",
+            bold=True,
         )
     )
 
@@ -136,11 +163,30 @@ def results(session_id: str):
     if not session:
         raise AppError(f"Session {session_id} does not exist")
 
-    comparison_repo = ComparisonEngineRepository().get_comparison_repository(session)(session)
-    final_results = comparison_repo.get_pending_comparison_count() == 0
-    click.echo(click.style(f"Results for session {session.name}:", fg="bright_white", bold=True))
-    for i, item in enumerate(comparison_repo.get_results()):
-        click.echo(f"  - {i + 1}: {item[0]} ({item[1]})")
+    comparison_repo = ComparisonEngineRepository().get_comparison_repository(
+        session
+    )(session)
+    final_results = comparison_repo.get_next_comparison() is None
+    click.echo(
+        click.style(
+            f"Results for session {session.name}:", fg="bright_white", bold=True
+        )
+    )
+    results_list = comparison_repo.get_results()
+    digits = int(math.log10(len(results_list)) + 1)
+    previous_count = -1
+
+    for i, item in enumerate(results_list):
+        if item[1] is not None:
+            if item[1] == previous_count:
+                click.echo(f"   {''.rjust(digits+1)} {item[0]} ({item[1]})")
+            else:
+                click.echo(
+                    f"   {str(i + 1).zfill(digits)}: {item[0]} ({item[1]})"
+                )
+            previous_count = item[1]
+        else:
+            click.echo(f"   {str(i + 1).zfill(digits)}: {item[0]}")
 
     click.echo(
         click.style(

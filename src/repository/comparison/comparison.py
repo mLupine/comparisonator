@@ -20,9 +20,6 @@ class ComparisonRepository(ABC):
         self._session = value
         SessionRepository().save_session(self._session)
 
-    def get_pending_comparisons(self) -> list[set[Item]]:
-        pass
-
     def get_pending_comparison_count(self) -> Optional[int]:
         pass
 
@@ -38,5 +35,5 @@ class ComparisonRepository(ABC):
     def save_comparison(self, comparison: Comparison) -> None:
         pass
 
-    def get_results(self) -> list[tuple[str, int]]:
+    def get_results(self) -> list[tuple[str, Any]]:
         pass

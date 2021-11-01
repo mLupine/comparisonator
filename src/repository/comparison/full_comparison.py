@@ -2,7 +2,7 @@ import json
 import random
 from dataclasses import asdict
 from math import comb
-from typing import Optional
+from typing import Any, Optional
 
 from dacite import from_dict
 
@@ -17,7 +17,10 @@ class FullComparisonRepository(ComparisonRepository):
     def __init__(self, session: Session):
         super().__init__(session)
         try:
-            self._comparisons = [from_dict(data_class=Comparison, data=c) for c in json.loads(session.comparison_data)]
+            self._comparisons = [
+                from_dict(data_class=Comparison, data=c)
+                for c in json.loads(session.comparison_data)
+            ]
         except:
             self._comparisons = []
 
@@ -29,12 +32,16 @@ class FullComparisonRepository(ComparisonRepository):
     def comparisons(self, value):
         self._comparisons = value
         session = self.session
-        session.comparison_data = json.dumps([asdict(c) for c in self._comparisons])
+        session.comparison_data = json.dumps(
+            [asdict(c) for c in self._comparisons]
+        )
         self.session = session
 
-    def get_pending_comparisons(self) -> list[set[Item]]:
+    def _get_pending_comparisons(self) -> list[set[Item]]:
         items = self.session.items
-        finished_comparisons = [set(c.items) for c in self.get_finished_comparisons()]
+        finished_comparisons = [
+            set(c.items) for c in self.get_finished_comparisons()
+        ]
         comparisons = []
         for i in range(len(items)):
             for j in range(i + 1, len(items)):
@@ -45,10 +52,13 @@ class FullComparisonRepository(ComparisonRepository):
         return comparisons
 
     def get_pending_comparison_count(self) -> Optional[int]:
-        return comb(len(self.session.items), 2) - self.get_finished_comparison_count()
+        return (
+            comb(len(self.session.items), 2)
+            - self.get_finished_comparison_count()
+        )
 
     def get_next_comparison(self) -> Optional[list[Item]]:
-        pending = self.get_pending_comparisons()
+        pending = self._get_pending_comparisons()
         return list(random.choice(pending)) if len(pending) else None
 
     def get_finished_comparisons(self) -> list[Comparison]:
@@ -58,20 +68,25 @@ class FullComparisonRepository(ComparisonRepository):
         return len(self.comparisons)
 
     def save_comparison(self, comparison: Comparison) -> None:
-        if set(comparison.items) in [set(c.items) for c in self.get_finished_comparisons()]:
+        if set(comparison.items) in [
+            set(c.items) for c in self.get_finished_comparisons()
+        ]:
             raise AppError("Comparison already exists")
 
-        if set(comparison.items) not in self.get_pending_comparisons():
+        if set(comparison.items) not in self._get_pending_comparisons():
             raise AppError("Invalid comparison items")
 
-        if comparison.winner < 0 or comparison.winner > len(comparison.items) - 1:
+        if (
+            comparison.winner < 0
+            or comparison.winner > len(comparison.items) - 1
+        ):
             raise AppError("Winner index out of range")
 
         comparisons = self.comparisons
         comparisons.append(comparison)
         self.comparisons = comparisons
 
-    def get_results(self) -> list[tuple[str, int]]:
+    def get_results(self) -> list[tuple[str, Any]]:
         results = {}
         for item in self.session.items:
             results[item.name] = 0
